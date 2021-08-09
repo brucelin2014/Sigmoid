@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport"
+			content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no" />
+		<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+		<title></title>
+		<style>
+			body {
+				margin: 0;
+				padding: 0;
+				font-size: 21px;
+			}
+
+			input {
+				font-size: 20px;
+				width: 140px;
+			}
+
+			[v-cloak] {
+				display: none
+			}
+		</style>
+	</head>
+	<body>
+		<div id="app">
+			<div style="padding: 10px;">
+				<h3>S型加减速</h3>
+				<h4>Fcurrent = Fstart + (Fend - Fstart) / (1 + exp(-(Flexible / Num) * i + Flexible))</h4>
+				<h4>Fcurrent = Fend - (Fend - Fstart) / (1 + exp(-(Flexible / Num) * i + Flexible))</h4>
+
+				当前频率(Fcurrent) <input v-model="Fcurrent" />
+				&nbsp;&nbsp;起始频率(Fstart) <input v-model="Fstart" />
+				&nbsp;&nbsp;目标频率(Fend) <input v-model="Fend" />
+				&nbsp;&nbsp;变化率(Flexible) <input v-model="Flexible" />
+				&nbsp;&nbsp;脉冲数(Num) <input v-model="Num" />
+			</div>
+
+			<canvas id="Canvas1" width="800" height="700" style="border:1px solid #000000;">
+			</canvas>
+			
+			<canvas id="Canvas2" width="800" height="700" style="border:1px solid #000000;">
+			</canvas>
+
+			<div id="js">
+				<script src="js/vue.min.js"></script>
+			</div>
+
+			<script>
+				var app = new Vue({
+					el: '#app',
+					data: {
+						Fcurrent: 0,
+						Fstart: 10,
+						Fend: 600,
+						Flexible: 7,
+						Num: 720
+					},
+					methods: {},
+					created: function() {}
+				})
+
+				function Sigmoid(Fstart, Fend, Flexible, Num, i) {
+					var Fcurrent = Fstart + (Fend - Fstart) / (1 + Math.exp(-(Flexible / Num) * i + Flexible));
+					return Fcurrent;
+				}
+
+				function Sigmoid2(Fstart, Fend, Flexible, Num, i) {
+					var Fcurrent = Fend - (Fend - Fstart) / (1 + Math.exp(-(Flexible / Num) * i + Flexible))
+					return Fcurrent;
+				}
+				
+				function GetContext1() {
+					var c = document.getElementById("Canvas1");
+					var ctx = c.getContext("2d");
+					ctx.fillStyle = "#00D000";
+					ctx.fillRect(0, 0, 800, 1080);
+					
+					ctx.translate(50, 50 + app.Fend);
+					ctx.scale(1, -1); // 上下镜像翻转
+					return ctx;
+				}
+				
+				function GetContext2() {
+					var c = document.getElementById("Canvas2");
+					var ctx = c.getContext("2d");
+					ctx.fillStyle = "#ffD000";
+					ctx.fillRect(0, 0, 800, 1080);
+					return ctx;
+				}
+
+				function drawPoint(ctx, x, y, r) {
+					ctx.beginPath(); // 起始一条路径，或重置当前路径
+					var sAngle = 0;
+					var eAngle = Math.PI * 2;
+					ctx.arc(x, y, r, sAngle, eAngle, true); // 创建弧/曲线
+					ctx.closePath(); // 创建从当前点回到起始点的路径
+					ctx.fillStyle = 'rgb(255,255,255)'; // 设置或返回用于填充绘画的颜色、渐变或模式
+					ctx.fill(); // 填充当前绘图（路径）
+				}
+
+				var i = 0;
+				var ctx1 = GetContext1();
+				setInterval(function() {
+					app.Fcurrent = Sigmoid(app.Fstart, app.Fend, app.Flexible, app.Num / 2, i);
+					drawPoint(ctx1, i, app.Fcurrent, 1);
+
+					app.Fcurrent = Sigmoid2(app.Fstart, app.Fend, app.Flexible, app.Num / 2, i);
+					drawPoint(ctx1, i, app.Fcurrent, 1);
+
+					i++;
+					if (i > app.Num) {
+						i = 0;
+						ctx1.clearRect(0, 0, 800, 1080);
+						ctx1.fillStyle = "#00D000";
+						ctx1.fillRect(0, 0, 800, 1080);
+					}
+				}, 1);
+
+				var angle = 0;
+				var ctx2 = GetContext2();
+				var r = 200;
+				setInterval(function() {
+					// 清屏
+					ctx2.clearRect(0, 0, 800, 1080);
+					ctx2.fillStyle = "#ffD000";
+					ctx2.fillRect(0, 0, 800, 1080);
+					
+					// 设置异次元空间
+					ctx2.save();
+					// 异次元空间 重置原点,默认是画布的(0,0)点
+					ctx2.translate(400, 350);
+					// 设置旋转角度  参数时弧度 角度0--360 弧度=角度*Math.PI/180
+					ctx2.rotate(angle * Math.PI / 180);
+					
+					// 旋转一个线段
+					ctx2.beginPath();
+					ctx2.lineWidth = 3;
+					ctx2.strokeStyle = 'blue';
+					ctx2.moveTo(0, 0);
+					ctx2.lineTo(r, 0);
+					ctx2.stroke();
+					ctx2.closePath();
+					
+					// 画圆
+					ctx2.beginPath();
+					ctx2.strokeStyle = 'green';
+					ctx2.arc(0, 0, r, 0, 2 * Math.PI);
+					ctx2.stroke();
+					
+					ctx2.translate(r, 0);
+					
+					// 画圆
+					ctx2.beginPath();
+					ctx2.lineWidth = 6;
+					ctx2.strokeStyle = 'red';
+					ctx2.arc(0, 0, 6, 0, 2 * Math.PI);
+					ctx2.stroke();
+					
+					// 将旋转之后的元素返回原画布
+					ctx2.restore();
+					
+					angle++;
+				}, 20);
+			</script>
+		</div>
+	</body>
+</html>
